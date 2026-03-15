@@ -1,30 +1,39 @@
-import { LipiaSTKRequest } from "./types"
+import { NextRequest, NextResponse } from "next/server"
 
-const BASE = "https://lipia-api.kreativelabske.com/api/v2"
-
-const headers = {
-  Authorization: `Bearer ${process.env.LIPIA_API_KEY}`,
-  "Content-Type": "application/json",
+interface STKBody {
+  phone_number: string
+  amount: number
+  external_reference?: string
 }
 
-export async function initiateSTK(data: LipiaSTKRequest) {
-  const res = await fetch(`${BASE}/payments/stk-push`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(data),
-  })
+export async function POST(req: NextRequest) {
+  try {
+    const body: STKBody = await req.json()
 
-  return res.json()
-}
+    const response = await fetch(
+      "https://lipia-api.kreativelabske.com/api/v2/payments/stk-push",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.LIPIA_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...body,
+          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/lipia/callback`,
+        }),
+      }
+    )
 
-export async function checkStatus(reference: string) {
-  const res = await fetch(
-    `${BASE}/payments/status?reference=${reference}`,
-    {
-      headers,
-      method: "GET",
-    }
-  )
+    const data = await response.json()
 
-  return res.json()
+    return NextResponse.json(data)
+
+  } catch (err) {
+
+    return NextResponse.json(
+      { error: "Failed to initiate payment" },
+      { status: 500 }
+    )
+  }
 }
